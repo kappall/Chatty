@@ -6,28 +6,26 @@ public class GreetClient {
     private Socket clientSocket;
     private PrintWriter out;
     private BufferedReader in;
+    private volatile boolean running = true;
 
-    public void startConnection(String ip, int port) {
+    public boolean startConnection(String ip, int port) {
         try {
             clientSocket = new Socket(ip, port);
             out = new PrintWriter(clientSocket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            return true;
         } catch (IOException e) {
             System.err.println("Connection error: " + e.getMessage());
+            return false;
         }
     }
 
-    public String sendMessage(String msg) {
-        try {
-            out.println(msg);
-            return in.readLine();
-        } catch (IOException e) {
-            System.err.println("Error sending message: " + e.getMessage());
-            return null;
-        }
+    public void sendMessage(String msg) {
+        out.println(msg);
     }
 
     public void stopConnection() {
+        running = false;
         try {
             if (in != null) in.close();
             if (out != null) out.close();
@@ -37,23 +35,40 @@ public class GreetClient {
         }
     }
 
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        GreetClient client = new GreetClient();
-        client.startConnection("127.0.0.1", 8888);
-
-        while (true) {
-            System.out.print("Me: ");
-            String message = scanner.nextLine();
-            String response = client.sendMessage(message);
-            if (".".equalsIgnoreCase(message)) {
-                System.out.println("Closing connection...");
-                client.stopConnection();
-                break;
+    private void startMessageReader() {
+        new Thread(() -> {
+            try {
+                String message;
+                while (running && (message = in.readLine()) != null) {
+                    System.out.println(message);
+                }
+            } catch (IOException e) {
+                if (running) {
+                    System.err.println("Connection lost: " + e.getMessage());
+                }
             }
-            System.out.println("Server: " + response);
-        }
+        }).start();
+    }
 
-        scanner.close();
+    public static void main(String[] args) {
+        GreetClient client = new GreetClient();
+        if (client.startConnection("127.0.0.1", 8888)) {
+            // Start message reader thread
+            client.startMessageReader();
+
+            // Handle user input
+            Scanner scanner = new Scanner(System.in);
+            while (client.running) {
+                String message = scanner.nextLine();
+                if ("/quit".equalsIgnoreCase(message)) {
+                    client.sendMessage(message);
+                    client.stopConnection();
+                    break;
+                }
+                client.sendMessage(message);
+            }
+
+            scanner.close();
+        }
     }
 }
