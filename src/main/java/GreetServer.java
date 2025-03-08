@@ -9,7 +9,7 @@ public class GreetServer {
     private static final Map<String, ClientHandler> activeClients = new ConcurrentHashMap<>();
 
     public static void main(String[] args) {
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+        try (ServerSocket serverSocket = new ServerSocket(PORT,50,InetAddress.getByName("0.0.0.0"))) {
             System.out.println("Server started on port " + PORT);
             while (true) {
                 try {
@@ -37,12 +37,14 @@ public class GreetServer {
 
         public ClientHandler(Socket socket) {
             this.clientSocket = socket;
+            System.out.println("Client connected:"+socket.getInetAddress());
         }
 
         public void run() {
             try {
                 out = new PrintWriter(clientSocket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+
                 String tmp = in.readLine();
                 boolean error = true;
                 while(error) {
@@ -69,7 +71,7 @@ public class GreetServer {
 
             if (users.containsKey(username)) {
                 if(activeClients.containsKey(username)){
-                    throw new AuthException("Anothe session from this user is active");
+                    throw new AuthException("Another session from this user is active");
                 }
                 while (true) {
                     out.println("Enter password:");
