@@ -1,8 +1,10 @@
+package com.klabadi.chatty.network.client;
+
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
 
-public class GreetClient {
+public class ChatClient {
     private Socket clientSocket;
     private PrintWriter out;
     private BufferedReader in;
@@ -51,7 +53,7 @@ public class GreetClient {
     }
 
     public static void main(String[] args) {
-        GreetClient client = new GreetClient();
+        ChatClient client = new ChatClient();
         if (client.startConnection("127.0.0.1", 8888)) {
             // Start message reader thread
             client.startMessageReader();
